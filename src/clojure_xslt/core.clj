@@ -38,9 +38,11 @@
        (.newTransformer factory source))))
 
 (defn templates
-  [factory xslt-input]
-  (let [source (StreamSource. xslt-input)]
-    (.newTemplates factory source)))
+  ([xslt-input]
+     (templates (transformer-factory) xslt-input))
+  ([factory xslt-input]
+     (let [source (StreamSource. xslt-input)]
+       (.newTemplates factory source))))
 
 (defn transform
   [xslt in out & xsl-params]
@@ -49,4 +51,3 @@
     (doseq [[name val] xsl-params]
       (.setParameter xslt name val))
     (.transform xslt source result)))
-

@@ -22,6 +22,18 @@
 
 (deftest change-title-transform
   (testing "Run sample XSLT against sample XML."
-    (with-open [xslt (input-stream "resources/change-title.xsl")
-                xml (input-stream "resources/dublin-core.xml")]
-      (transform (transformer xslt) xml *out*))))
+    (let [result
+          (with-out-str
+            (with-open [xslt (input-stream "resources/change-title.xsl")
+                        xml (input-stream "resources/dublin-core.xml")]
+              (transform (transformer xslt) xml *out*)))]
+      (is (.contains result "New Title")))))
+
+(deftest change-title-templates
+  (testing "Run sample XSLT against sample XML using javax.xml.transform.Templates"
+    (let [result
+          (with-out-str
+            (with-open [xslt (input-stream "resources/change-title.xsl")
+                        xml (input-stream "resources/dublin-core.xml")]
+              (transform (.newTransformer (templates xslt)) xml *out*)))]
+      (is (.contains result "New Title")))))
