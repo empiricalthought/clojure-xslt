@@ -1,7 +1,9 @@
 (ns clojure-xslt.core
   (:import [javax.xml.transform TransformerFactory Transformer Templates]
            [javax.xml.transform.stream StreamSource StreamResult]
-           [javax.xml.xpath XPathFactory XPathConstants])
+           [javax.xml.xpath XPathFactory XPathConstants]
+           [javax.xml.parsers DocumentBuilderFactory]
+           [javax.xml.namespace NamespaceContext])
   (:use [clojure.java.io :only (input-stream output-stream)]))
 
 (derive java.io.InputStream ::stream)
@@ -10,6 +12,31 @@
 (derive java.io.Writer ::stream)
 
 
+(defn document-builder-factory
+  [& opts]
+  (let [{features :features
+         attributes :attributes
+         class-name :class-name
+         class-loader :class-loader}
+        (when opts (apply hash-map opts))
+        factory (if class-name
+                  (DocumentBuilderFactory/newInstance class-name class-loader)
+                  (DocumentBuilderFactory/newInstance))]
+    (doseq [[name val] features]
+      (.setFeature factory name val))
+    (doseq [[name val] attributes]
+      (.setAttribute factory name val))
+    (.setNamespaceAware factory true)
+    factory))
+
+(defn document
+  ([input]
+     (document input (document-builder-factory)))
+  ([input document-builder-factory]
+     (.parse (.newDocumentBuilder document-builder-factory) input))
+  ([input document-builder-factory system-id]
+     (.parse (.newDocumentBuilder document-builder-factory) input system-id)))
+
 (def xpath-constant-map
   {:string XPathConstants/STRING
    :boolean XPathConstants/BOOLEAN
@@ -17,6 +44,11 @@
    :node XPathConstants/NODE
    :nodeset XPathConstants/NODESET
    :number XPathConstants/NUMBER})
+
+(defn namespace-context
+  [ns-context-map]
+  (proxy [NamespaceContext] []
+    (getNamespaceURI [prefix] (ns-context-map prefix))))
 
 (defn xpath-factory
   [& opts]
@@ -41,15 +73,25 @@
 
 (defn xpath
   ([expression]
-     (xpath (xpath-factory) expression))
-  ([xpath-factory expression]
-     (xpath xpath-factory expression :string))
-  ([xpath-factory expression return-type]
-     (let [xpath-return-type
-           (xpath-constant-map return-type)]
+     (xpath expression nil))
+  ([expression & opts]
+     (let [{factory :factory
+            ns :ns
+            return-type :return-type
+            preserve-whitespace :preserve-whitespace}
+           (when opts (apply hash-map opts))
+           xpath-return-type (get xpath-constant-map return-type XPathConstants/STRING)
+           ns-context (if (map? ns)
+                        (namespace-context ns)
+                        ns)
+           fact (if factory factory (xpath-factory))]
        (fn [obj]
-         (let [xp (.newXPath xpath-factory)]
-           (.evaluate expression obj xpath-return-type))))))
+         (let [xp (.newXPath fact)]
+           (.setNamespaceContext xp ns-context)
+           (let [result (.evaluate xp expression obj xpath-return-type)]
+             (if (and (string? result) (not preserve-whitespace))
+               (.trim result)
+               result)))))))
 
 
 (defn transformer-factory

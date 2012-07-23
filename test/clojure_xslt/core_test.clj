@@ -37,3 +37,18 @@
                         xml (input-stream "resources/dublin-core.xml")]
               (transform (.newTransformer (templates xslt)) xml *out*)))]
       (is (.contains result "New Title")))))
+
+(deftest xpath-factory-construction
+  (testing "Set up some XPathFactory objects"
+    (is (thrown? Exception
+                 (xpath-factory :features
+                                {"http://not-a-real-feature.com" true})))
+    (is (xpath-factory :features
+                       {"http://javax.xml.XMLConstants/feature/secure-processing" true}))))
+
+(deftest xpath-functions
+  (testing "check xpath stuff"
+    (with-open [xml (input-stream "resources/dublin-core.xml")]
+      (prn ((xpath "//dc:format"
+                   :ns {"dc" "http://purl.org/dc/elements/1.1/"})
+            (document xml))))))
