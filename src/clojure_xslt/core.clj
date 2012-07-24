@@ -1,4 +1,5 @@
 (ns clojure-xslt.core
+  "Core code for wrapping JAXP functionality in a Clojure API."
   (:import [javax.xml.transform TransformerFactory Transformer Templates]
            [javax.xml.transform.stream StreamSource StreamResult]
            [javax.xml.xpath XPathFactory XPathConstants]
@@ -6,13 +7,18 @@
            [javax.xml.namespace NamespaceContext])
   (:use [clojure.java.io :only (input-stream output-stream)]))
 
-(derive java.io.InputStream ::stream)
-(derive java.io.OutputStream ::stream)
-(derive java.io.Reader ::stream)
-(derive java.io.Writer ::stream)
-
 
 (defn document-builder-factory
+  "Create a DocumentBuilderFactory instance.
+
+`opts` are keyword/value pairs, all of which are optional.
+Valid keywords are:
+
+   :features       a map, name/values to set as XML parser features
+   :attributes     a map, name/values to set as XML parser attributes
+   :class-name     a string, name of the DocumentBuilderFactory class to use
+   :class-loader   a ClassLoader, the classloader to use to load the factory
+"
   [& opts]
   (let [{features :features
          attributes :attributes
@@ -29,13 +35,21 @@
     (.setNamespaceAware factory true)
     factory))
 
+
 (defn document
+  "Create an org.w3c.dom.Document from a given input.
+
+`input` can be a File, InputStream, String (representing a URI), or
+InputSource.  When present, the DocumentBuilderFactory `dbf` will be
+used to create the parser.  If `system-id` is also present, the parser
+will use its value as the base for relative URI resolution."
   ([input]
      (document input (document-builder-factory)))
-  ([input document-builder-factory]
-     (.parse (.newDocumentBuilder document-builder-factory) input))
-  ([input document-builder-factory system-id]
-     (.parse (.newDocumentBuilder document-builder-factory) input system-id)))
+  ([input dbf]
+     (.parse (.newDocumentBuilder dbf) input))
+  ([input dbf system-id]
+     (.parse (.newDocumentBuilder dbf) input system-id)))
+
 
 (def xpath-constant-map
   {:string XPathConstants/STRING
@@ -45,10 +59,13 @@
    :nodeset XPathConstants/NODESET
    :number XPathConstants/NUMBER})
 
+
 (defn namespace-context
+  "Generate a NamespaceContext object given a map of prefixes to URIs."
   [ns-context-map]
   (proxy [NamespaceContext] []
     (getNamespaceURI [prefix] (ns-context-map prefix))))
+
 
 (defn xpath-factory
   [& opts]
