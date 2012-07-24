@@ -17,8 +17,7 @@ Valid keywords are:
    :features       a map, name/values to set as XML parser features
    :attributes     a map, name/values to set as XML parser attributes
    :class-name     a string, name of the DocumentBuilderFactory class to use
-   :class-loader   a ClassLoader, the classloader to use to load the factory
-"
+   :class-loader   a ClassLoader, the classloader to use to load the factory"
   [& opts]
   (let [{features :features
          attributes :attributes
@@ -68,6 +67,19 @@ will use its value as the base for relative URI resolution."
 
 
 (defn xpath-factory
+  "Create an javax.xml.xpath.XPathFactory instance.
+
+`opts` are keyword/value pairs, all of which are optional.  Valid
+keywords are:
+
+   :features           a map, name/values to set as XPathFactory features
+   :function-resolver  an XPathFunctionResolver
+   :variable-resolver  an XPathVariableResolver
+   :class-name         a String, name of the XPathFactory class to use
+   :class-loader       a ClassLoader, the classloader to use to load
+                       the factory
+   :object-model-uri   a String that is the URI for the XPathFactory's
+                       object model"
   [& opts]
   (let [{features :features
          function-resolver :function-resolver
@@ -89,6 +101,21 @@ will use its value as the base for relative URI resolution."
     factory))
 
 (defn xpath
+  "Create an XPath evaluation function from a given XPath expression.
+
+The return value is a Clojure function.  This function takes a single
+argument: the context in which to evaluate the XPath expression.
+
+`opts` are keyword/value pairs, all of which are optional.  Valid
+keywords are:
+
+   :factory      an XPathFactory
+   :ns           a map from XML namespace prefixes to the corresponding URIs
+   :return-type  a keyword. The return type of the XPath evaluation.
+                 One of :string, :boolean, :node, :nodeset, :number,
+                 or :dom-object-model
+   :preserve-whitespace  boolean; when true, string results will be returned
+                         with leading and trailing whitespace if present."
   ([expression]
      (xpath expression nil))
   ([expression & opts]
@@ -112,6 +139,17 @@ will use its value as the base for relative URI resolution."
 
 
 (defn transformer-factory
+  "Create a TransformerFactory instance.
+
+`opts` are keyword/value pairs, all of which are optional.  Valid
+keywords are:
+
+   :features        a map, name/value pairs of TransformerFactory features
+   :attributes      a map, name/value pairs of TransformerFactory attributes
+   :uri-resolver    a URIResolver
+   :error-listener  an ErrorListener
+   :class-name      a String, name of the TransformerFactory class to use
+   :class-loader    a ClassLoader, the class loader to use to load the factory"
   [& opts]
   (let [{class-name :class-name
          class-loader :class-loader
@@ -134,6 +172,10 @@ will use its value as the base for relative URI resolution."
     factory))
 
 (defn transformer
+  "Create a Transformer from a given Reader or InputStream.
+
+When factory is present, it will be used as the TransformerFactory
+instance that creates the Transformer."
   ([xslt-input]
      (transformer (transformer-factory) xslt-input))
   ([factory xslt-input]
@@ -141,6 +183,10 @@ will use its value as the base for relative URI resolution."
        (.newTransformer factory source))))
 
 (defn templates
+  "Create a Templates from a given Reader or InputStream.
+
+When factory is present, it will be used as the TransformerFactory
+instance that creates the Templates."
   ([xslt-input]
      (templates (transformer-factory) xslt-input))
   ([factory xslt-input]
@@ -148,6 +194,10 @@ will use its value as the base for relative URI resolution."
        (.newTemplates factory source))))
 
 (defn transform
+  "Apply the transformation from xslt to in, outputting the result to out.
+
+`xslt` is an instance of javax.xml.transform.Transformer.  `in` is a
+Reader or an InputStream.  `out` is a Writer or an OutputStream."
   [xslt in out & xsl-params]
   (let [source (StreamSource. in)
         result (StreamResult. out)]
